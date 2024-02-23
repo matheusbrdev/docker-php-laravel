@@ -7,7 +7,7 @@
 2. Faça o build da imagem no seu local:
 
 ```bash
-$ sudo docker image build -f nomeDoDockerfileQueDesejaBuildar -t php-indiana-dev:versão(8.1 ou 7.3) --build-arg user=seuNomeDeUsuarioNoWsl --build-arg uid=1000 .
+$ sudo docker image build -f nomeDoDockerfileQueDesejaBuildar -t php-dev:versão(8.1 ou 7.3) --build-arg user=seuNomeDeUsuarioNoWsl --build-arg uid=1000 .
 ```
 
 > - user = Nome do seu usuário no wsl;
