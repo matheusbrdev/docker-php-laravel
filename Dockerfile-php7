@@ -1,0 +1,102 @@
+FROM php:7.3.31-apache-buster
+
+ARG user
+ARG uid
+
+ENV ACCEPT_EULA=Y
+
+RUN a2enmod ssl \
+    && a2enmod rewrite
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+    apt-transport-https \
+    software-properties-common \
+    openssl \
+    apt-utils \
+    autoconf \
+    unixodbc \
+    unixodbc-dev \
+    libltdl-dev \
+    build-essential \
+    procps \
+    file \
+    libxml2 \
+    unzip \
+    gnupg2 \
+    git \
+    curl \
+    libtool \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libmcrypt-dev \
+    libbz2-dev \
+    libzip-dev \
+    libmagickwand-dev \
+    libmagickcore-dev \
+    libsodium-dev \
+    zip \
+    bzr \
+    cvs \
+    subversion \
+    wget \
+    libldap2-dev \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install prerequisites for the sqlsrv and pdo_sqlsrv PHP extensions.
+#RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+#    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+#    && apt-get update \
+#    && apt-get install -y msodbcsql17 mssql-tools \
+#    && rm -rf /var/lib/apt/lists/*
+
+#Instalando php Composer
+RUN wget -O composer-setup.php https://getcomposer.org/installer \
+    && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
+    && chmod +x /usr/local/bin/composer
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo pdo_mysql mbstring xml exif pcntl bcmath gd \
+    sodium zip bcmath soap opcache ldap \ 
+    && pecl install xdebug-3.1.6 \ 
+    && docker-php-ext-enable xdebug \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
+    --with-gd \
+    --with-jpeg-dir \
+    --with-png-dir \
+    --with-zlib-dir
+
+RUN docker-php-ext-install -j$(nproc) gd
+
+# Retrieve the script used to install PHP extensions from the source container.
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/bin/install-php-extensions
+
+# Habilita no PHP.ini. PHP extensions and all their prerequisites available via apt.
+RUN chmod uga+x /usr/bin/install-php-extensions \ 
+  && sync \
+  && install-php-extensions intl grpc xmlrpc imagick  \
+  #&& install-php-extensions sqlsrv pdo_sqlsrv intl grpc xmlrpc imagick  \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
+  && apt-get update \ 
+  && apt-get install -y nodejs
+
+# Create system user to run Composer and Artisan Commands
+RUN useradd -G www-data,root -u $uid -d /home/$user $user
+RUN mkdir -p /home/$user/.composer && \
+  chown -R $user:$user /home/$user
+
+WORKDIR /var/www/html
+
+COPY ./config/apache/000-default.conf /etc/apache2/sites-enabled/000-default.conf
+COPY ./config/xdebug/99-xdebug.ini /usr/local/etc/php/conf.d/99-xdebug.ini
+
+USER $user
+
+CMD ["apachectl", "-D", "FOREGROUND"]

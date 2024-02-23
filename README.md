@@ -1,45 +1,37 @@
-# Ambiente de desenvolvimento
+# Ambiente PHP com Docker
 
-## Build da imagem
-Depois de clonado este repositório é necessário fazer o build desta imagem:
+## Como usar
+
+1. Clone este projeto;
+
+2. Faça o build da imagem no seu local:
+
 ```bash
-$ docker build -f Dockerfile -t local/php-8.1:0.0.1 --build-arg user=yourUserName --build-arg uid=1000 .
+$ sudo docker image build -f nomeDoDockerfileQueDesejaBuildar -t php-indiana-dev:versão(8.1 ou 7.3) --build-arg user=seuNomeDeUsuarioNoWsl --build-arg uid=1000 .
 ```
-> Este comando irá fazer o build localmente passando os argumentos requeridos pela imagem.
-> - user = Nome do seu usuário;
-> - uid = Identificador deste usuário.
-> Estes argumentos serão usados na criação do nosso usuário dentro do container para
-> evitar problemas com permissões.
 
-## Docker compose
-Agora já podemos servir nosso projeto.
+> - user = Nome do seu usuário no wsl;
+> - uid = Grupo do usuário.
 
-1. Dentro do diretório do projeto crie um arquivo estritamente chamado `docker-compose.yml`;
-```docker
-version: '3.9'
+## Usando em um projeto:
 
-services:
-  app:
-    image: local/php-8.1:0.0.1
-    hostname: nome-para-o-seu-hostname
-    container_name: nome-para-o-seu-container
-    restart: always
-    volumes:
-      - ./:/var/www/html
-    security_opt:
-      - no-new-privileges:true
-    ports:
-      - "8000:80"
-    logging:
-      driver: json-file
-      options:
-        max-size: "100M"
-        max-file: "5"
-```
-> Aqui estamos usando a imagem buildada para criar um container fazendo um volume
-> da nossa aplicação para dentro deste container.
+1. Crie um container em cima da imagem buildada:
 
-2. Agora basta subir o container com o docker compose:
 ```bash
-$ docker compose up -d
+$ sudo docker container run -d --name nome-do-container -v "$(pwd)/nome-da-pasta-do-projeto":/var/www/html -p porta-de-acesso-a-aplicacao:80 nome-dado-a-imagem-buildada-acima
+```
+
+> - -v = Criando volume dos aquivos da pasta alvo para dentro do container;
+> - -p = mapeamento de portas para o host e container.
+
+## Execução de comandos dentro do container:
+
+```bash
+$ sudo docker exec nome-do-container seuComandoAqui
+```
+
+2. Caso queira manter uma sessão ativa do terminal do seu container basta digitar:
+
+```bash
+$ sudo docker exec -ti nome-do-container env TERM=xterm-256color bash -l
 ```
